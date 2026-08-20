@@ -1802,13 +1802,32 @@ function serializeMedicalForm(){
   });
 
   // تمام گروه‌های radio، حتی radioهایی که id ندارند، ذخیره می‌شوند.
-  // این شامل نوع معاینات در «مشخصات پرونده» و پاسخ‌های بلی/خیر بخش ۴ است.
+  // علاوه بر ذخیره عمومی، پاسخ‌های بخش ۴ به‌صورت صریح و مستقل از DOM ذخیره می‌شوند
+  // تا در هنگام فراخوانی هر فرد، پاسخ‌های همان فرد دقیقاً برگردند.
   const names = new Set();
   elements.forEach(el=>{ if(el.type === 'radio' && el.name) names.add(el.name); });
   names.forEach(name=>{
     const checked = elements.find(el=>el.type === 'radio' && el.name === name && el.checked);
     data['radio_'+name] = checked ? checked.value : '';
   });
+
+  // بخش ۴: ذخیره صریح تک‌تک پاسخ‌های شاغل و توضیحات مربوط به هر سؤال.
+  // این داده‌ها با شماره سؤال ذخیره می‌شوند تا مستقل از ترتیب یا وضعیت فعلی DOM باشند.
+  PERS_HISTORY_ROWS?.forEach?.((q, i)=>{
+    const n = i + 1;
+    const group = `f_hist_q${n}`;
+    const checked = elements.find(el=>el.type === 'radio' && el.name === group && el.checked);
+    const note = document.getElementById(`f_hist_q${n}_note`);
+    data[`history_${n}_answer`] = checked ? checked.value : '';
+    data[`history_${n}_note`] = note ? (note.value || '') : '';
+  });
+
+  // نوع معاینات باید صریحاً داخل هر پرونده پزشکی ذخیره شود تا با تغییر فرد،
+  // نوع معاینه فرد قبلی روی پرونده فرد جدید باقی نماند.
+  const examType = elements.find(el => el.type === 'radio' && el.name === 'f_exam_type' && el.checked);
+  data.medical_exam_type = examType ? examType.value : '';
+  const examPeriod = document.getElementById('f_exam_type_period');
+  data.medical_exam_type_period = examPeriod ? (examPeriod.value || '') : '';
 
   return data;
 }
@@ -1836,6 +1855,25 @@ function applyMedicalForm(data){
     if(el.type === 'checkbox') el.checked = !!d[key];
     else el.value = d[key] ?? '';
   });
+
+  // بخش ۴: پاسخ‌های ذخیره‌شده همان فرد را صریحاً اعمال کن.
+  // ابتدا همه پاسخ‌ها و توضیحات پاک شده‌اند؛ سپس فقط مقادیر رکورد انتخاب‌شده برمی‌گردند.
+  for(let i=1; i<=PERS_HISTORY_ROWS.length; i++){
+    const group = `f_hist_q${i}`;
+    const answer = d[`history_${i}_answer`] ?? d[`radio_${group}`] ?? '';
+    const radios = elements.filter(el=>el.type === 'radio' && el.name === group);
+    radios.forEach(r=>{ r.checked = !!answer && r.value === answer; });
+    const note = document.getElementById(`f_hist_q${i}_note`);
+    if(note) note.value = d[`history_${i}_note`] ?? d[`f_hist_q${i}_note`] ?? '';
+  }
+
+  // نوع معاینات را صریحاً از داده همین فرد اعمال کن. این کار جلوی باقی ماندن
+  // نوع معاینه فرد قبلی را حتی در صورت وجود کنترل‌های رادیویی هم می‌گیرد.
+  const savedExamType = d.medical_exam_type ?? d.radio_f_exam_type ?? '';
+  const examRadios = document.querySelectorAll('input[type="radio"][name="f_exam_type"]');
+  examRadios.forEach(r => { r.checked = !!savedExamType && r.value === savedExamType; });
+  const examPeriod = document.getElementById('f_exam_type_period');
+  if(examPeriod) examPeriod.value = d.medical_exam_type_period ?? d.f_exam_type_period ?? '';
 
   updateSignaturePreview();
   if(window.updateMedicalPreviews) window.updateMedicalPreviews();
@@ -1885,9 +1923,11 @@ function getMedicalWorkerName(record){
 function medicalRecordLabel(record, index){
   const d = record?.data || {};
   const worker = getMedicalWorkerName(record) || 'بدون نام';
-  const type = d.radio_f_exam_type || d.f_exam_type_period || 'پرونده پزشکی';
+  const type = d.medical_exam_type || d.radio_f_exam_type || 'پرونده پزشکی';
+  const period = d.medical_exam_type_period || d.f_exam_type_period || '';
+  const typeLabel = type === 'دوره‌ای' && period ? `${type} نوبت ${period}` : type;
   const date = d.f_case_date || d.f_exam_date2 || d.f_final_date || 'بدون تاریخ';
-  return `پرونده پزشکی ${toFaDigits(index + 1)} — ${worker} — ${type} — ${date}`;
+  return `پرونده پزشکی ${toFaDigits(index + 1)} — ${worker} — ${typeLabel} — ${date}`;
 }
 
 function renderMedicalRecordPicker(){
