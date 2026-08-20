@@ -965,6 +965,7 @@ window.PUBLIC_SUPABASE_CONFIG = {
           <select id="medicalRecordPicker" style="min-width:280px;">
             <option value="">— انتخاب پرونده پزشکی —</option>
           </select>
+          <button type="button" class="btn-primary" id="btnSaveMedicalRecord">ذخیره پرونده پزشکی</button>
           <button type="button" class="btn-danger" id="btnDeleteMedicalRecord">حذف پرونده پزشکی</button>
         </div>
         <div class="mini-note" style="margin-top:7px;">هر پرونده پزشکی مستقل ذخیره می‌شود و با انتخاب آن، تمام اطلاعات همان پرونده فراخوانی می‌شود.</div>
@@ -1639,8 +1640,19 @@ function getAllFields(){
 }
 
 function serializeForm(){
+  // اطلاعات «پرونده پزشکی شاغل» عمداً از رکورد اصلی کارگاه جدا نگه داشته می‌شود.
+  // این داده‌ها فقط در medicalRecords ذخیره می‌شوند.
+  const medicalSections = getMedicalSections();
+  const medicalIds = new Set();
+  const medicalRadioNames = new Set();
+  medicalSections.forEach(sec=>{
+    sec.querySelectorAll('[id^="f_"]').forEach(el=>medicalIds.add(el.id));
+    sec.querySelectorAll('input[type="radio"][name]').forEach(el=>medicalRadioNames.add(el.name));
+  });
+
   const data = {};
   document.querySelectorAll('[id^="f_"]').forEach(el=>{
+    if(medicalIds.has(el.id)) return;
     if(el.type === 'checkbox') data[el.id] = el.checked;
     else data[el.id] = el.value;
   });
@@ -1650,6 +1662,7 @@ function serializeForm(){
   const radioNames = new Set();
   document.querySelectorAll('input[type=radio][name]').forEach(el=>radioNames.add(el.name));
   radioNames.forEach(name=>{
+    if(medicalRadioNames.has(name)) return;
     const checked = document.querySelector(`input[name="${name}"]:checked`);
     data['radio_'+name] = checked ? checked.value : '';
   });
@@ -1769,6 +1782,7 @@ document.querySelectorAll('.btn-clear-section').forEach(btn=>{
 // اطلاعات بازدید کارگاه و سایر قسمت‌های فرم عمداً وارد medicalRecords نمی‌شوند.
 let medicalRecordsState = [];
 let currentMedicalRecordId = null;
+let medicalDraftDirty = false;
 
 function getMedicalSections(){
   const sections = [...document.querySelectorAll('.section')];
@@ -1821,10 +1835,11 @@ function clearMedicalForm(){ applyMedicalForm({}); }
 
 function medicalRecordLabel(record, index){
   const d = record?.data || {};
-  const type = d.f_exam_type_period || 'پرونده پزشکی';
+  const worker = (d.f_fullname || '').trim() || 'بدون نام';
+  const type = d.radio_f_exam_type || (d.f_exam_type_period ? 'دوره‌ای' : 'پرونده پزشکی');
+  const period = d.f_exam_type_period ? ` نوبت ${d.f_exam_type_period}` : '';
   const date = d.f_case_date || d.f_exam_date2 || d.f_final_date || 'بدون تاریخ';
-  const worker = d.f_fullname ? ` — ${d.f_fullname}` : '';
-  return `${toFaDigits(index + 1)}. ${type} — ${date}${worker}`;
+  return `پرونده پزشکی ${toFaDigits(index + 1)} — ${worker} — ${type}${period} — ${date}`;
 }
 
 function renderMedicalRecordPicker(){
@@ -1841,31 +1856,39 @@ function renderMedicalRecordPicker(){
 }
 
 function syncCurrentMedicalRecord(){
-  if(!currentMedicalRecordId) return;
+  if(!currentMedicalRecordId) return false;
   const idx = medicalRecordsState.findIndex(r=>r.id === currentMedicalRecordId);
-  if(idx < 0) return;
+  if(idx < 0) return false;
   medicalRecordsState[idx].data = serializeMedicalForm();
   medicalRecordsState[idx].updatedAt = new Date().toISOString();
+  medicalDraftDirty = false;
+  renderMedicalRecordPicker();
+  return true;
 }
 
 function createMedicalRecord(){
-  syncCurrentMedicalRecord();
+  if(medicalDraftDirty && !confirm('اطلاعات پرونده پزشکی فعلی هنوز ذخیره نشده است. بدون ذخیره، پرونده جدید ایجاد شود؟')) return;
   const id = 'medical:' + Date.now() + ':' + Math.random().toString(36).slice(2,8);
   const record = { id, data:{}, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() };
   medicalRecordsState.push(record);
   currentMedicalRecordId = id;
   clearMedicalForm();
+  medicalDraftDirty = false;
   renderMedicalRecordPicker();
   markUnsaved();
 }
 
 function loadMedicalRecord(id){
-  if(!id){ currentMedicalRecordId = null; clearMedicalForm(); renderMedicalRecordPicker(); return; }
-  syncCurrentMedicalRecord();
+  if(!id){ currentMedicalRecordId = null; clearMedicalForm(); medicalDraftDirty = false; renderMedicalRecordPicker(); return; }
+  if(medicalDraftDirty && id !== currentMedicalRecordId && !confirm('اطلاعات پرونده پزشکی فعلی هنوز ذخیره نشده است. بدون ذخیره، پرونده انتخاب‌شده بارگذاری شود؟')){
+    renderMedicalRecordPicker();
+    return;
+  }
   const record = medicalRecordsState.find(r=>r.id === id);
   if(!record) return;
   currentMedicalRecordId = id;
   applyMedicalForm(record.data || {});
+  medicalDraftDirty = false;
   renderMedicalRecordPicker();
   setStatus('پرونده پزشکی بارگذاری شد', true);
 }
@@ -1884,6 +1907,7 @@ function deleteCurrentMedicalRecord(){
     currentMedicalRecordId = null;
     clearMedicalForm();
   }
+  medicalDraftDirty = false;
   renderMedicalRecordPicker();
   markUnsaved();
 }
@@ -1895,11 +1919,11 @@ function ensureAtLeastOneMedicalRecord(){
   const id = 'medical:legacy:' + Date.now();
   medicalRecordsState = [{id, data: hasLegacy ? legacy : {}, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()}];
   currentMedicalRecordId = id;
+  medicalDraftDirty = false;
   renderMedicalRecordPicker();
 }
 
 function getMedicalRecordsForSave(){
-  syncCurrentMedicalRecord();
   return medicalRecordsState.map(r=>({
     id:r.id,
     data:{...(r.data||{})},
@@ -1908,10 +1932,51 @@ function getMedicalRecordsForSave(){
   }));
 }
 
+async function saveCurrentMedicalRecord(){
+  if(!currentMedicalRecordId){
+    createMedicalRecord();
+    if(!currentMedicalRecordId) return;
+  }
+  const idx = medicalRecordsState.findIndex(r=>r.id === currentMedicalRecordId);
+  if(idx < 0) return;
+  const data = serializeMedicalForm();
+  const workerName = (data.f_fullname || '').trim();
+  if(!workerName){
+    alert('لطفاً نام و نام خانوادگی شاغل را در پرونده پزشکی وارد کنید.');
+    document.getElementById('f_fullname')?.focus();
+    return;
+  }
+  medicalRecordsState[idx].data = data;
+  medicalRecordsState[idx].updatedAt = new Date().toISOString();
+  medicalDraftDirty = false;
+  renderMedicalRecordPicker();
+
+  // پرونده پزشکی به همان رکورد کارگاه تعلق دارد؛ فقط زیرمجموعه medicalRecords ذخیره می‌شود.
+  try{
+    const workshopName = document.getElementById('f_workshop_name')?.value.trim() || 'بدون‌نام';
+    const caseNo = data.f_case_no?.trim() || '';
+    const parentId = currentId || ('inspection:' + Date.now());
+    const baseData = serializeForm();
+    const payload = { meta:{label:[workshopName, 'پرونده پزشکی: '+workerName, caseNo ? ('پرونده '+caseNo) : ''].filter(Boolean).join(' — '), savedAt:new Date().toISOString()}, data:baseData, medicalRecords:getMedicalRecordsForSave() };
+    const result = await window.storage.set(parentId, JSON.stringify(payload), false);
+    if(!result) throw new Error('ذخیره‌سازی انجام نشد');
+    currentId = parentId;
+    await refreshList();
+    await refreshStats();
+    recordPicker.value = parentId;
+    setStatus('پرونده پزشکی ذخیره شد ✓', true);
+  }catch(e){
+    console.error(e);
+    setStatus('خطا در ذخیره پرونده پزشکی: '+(e.message||e), false);
+  }
+}
+
 const btnAddMedicalRecord = document.getElementById('btnAddMedicalRecord');
 const medicalRecordPicker = document.getElementById('medicalRecordPicker');
 const btnDeleteMedicalRecord = document.getElementById('btnDeleteMedicalRecord');
+const btnSaveMedicalRecord = document.getElementById('btnSaveMedicalRecord');
 btnAddMedicalRecord?.addEventListener('click', createMedicalRecord);
+btnSaveMedicalRecord?.addEventListener('click', saveCurrentMedicalRecord);
 medicalRecordPicker?.addEventListener('change', e=> loadMedicalRecord(e.target.value));
 btnDeleteMedicalRecord?.addEventListener('click', deleteCurrentMedicalRecord);
 
@@ -2102,8 +2167,14 @@ function setStatus(text, saved){
 }
 
 function markUnsaved(){ setStatus('ذخیره‌نشده', false); renderCorrections(); }
-document.addEventListener('input', markUnsaved);
-document.addEventListener('change', markUnsaved);
+document.addEventListener('input', e=>{
+  markUnsaved();
+  if(getMedicalSections().some(sec=>sec.contains(e.target))) medicalDraftDirty = true;
+});
+document.addEventListener('change', e=>{
+  markUnsaved();
+  if(getMedicalSections().some(sec=>sec.contains(e.target))) medicalDraftDirty = true;
+});
 
 async function refreshList(){
   recordPicker.innerHTML = '<option value="">— فرم‌های ذخیره‌شده —</option>';
@@ -2169,6 +2240,7 @@ document.getElementById('btnNew').addEventListener('click', ()=>{
   recordPicker.value = '';
   medicalRecordsState = [];
   currentMedicalRecordId = null;
+  medicalDraftDirty = false;
   ensureAtLeastOneMedicalRecord();
   markUnsaved();
 });
@@ -2207,6 +2279,7 @@ recordPicker.addEventListener('change', async ()=>{
       if(medicalRecordsState.length){
         currentMedicalRecordId = medicalRecordsState[0].id;
         applyMedicalForm(medicalRecordsState[0].data || {});
+        medicalDraftDirty = false;
         renderMedicalRecordPicker();
       }else{
         currentMedicalRecordId = null;
