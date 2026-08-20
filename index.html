@@ -959,6 +959,16 @@ window.PUBLIC_SUPABASE_CONFIG = {
     <div class="section-head"><span class="num">پزشکی</span> پرونده پزشکی شاغل — ادامه فرم بازدید</div>
     <div class="section-body" style="padding:10px 16px;">
       <div class="mini-note" style="margin:0;">پس از تکمیل اطلاعات بازدید، مشخصات و سوابق پزشکی شاغل در ادامه همین پرونده ثبت و همراه با اطلاعات بازدید ذخیره می‌شود.</div>
+      <div id="medicalRecordsManager" style="margin-top:12px; padding:10px; border:1px solid var(--line); border-radius:4px; background:#fafcfb;">
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <button type="button" class="btn-ghost" id="btnAddMedicalRecord">+ افزودن پرونده پزشکی جدید</button>
+          <select id="medicalRecordPicker" style="min-width:280px;">
+            <option value="">— انتخاب پرونده پزشکی —</option>
+          </select>
+          <button type="button" class="btn-danger" id="btnDeleteMedicalRecord">حذف پرونده پزشکی</button>
+        </div>
+        <div class="mini-note" style="margin-top:7px;">هر پرونده پزشکی مستقل ذخیره می‌شود و با انتخاب آن، تمام اطلاعات همان پرونده فراخوانی می‌شود.</div>
+      </div>
     </div>
   </div>
 
@@ -998,21 +1008,6 @@ window.PUBLIC_SUPABASE_CONFIG = {
     </div>
   </div>
 
-  <!-- ===================== مدیریت پرونده‌های پزشکی شاغل ===================== -->
-  <div id="medicalRecordsManager" class="section" style="margin-bottom:12px;">
-    <div class="section-head"><span class="num">پرونده</span> مدیریت پرونده‌های پزشکی شاغل</div>
-    <div class="section-body" style="padding:10px 14px;">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-        <button type="button" class="btn-primary" id="btnAddMedicalRecord">+ افزودن پرونده پزشکی جدید</button>
-        <select id="medicalRecordPicker" style="min-width:260px;"><option value="">— پرونده پزشکی —</option></select>
-        <button type="button" class="btn-danger" id="btnDeleteMedicalRecord">حذف پرونده پزشکی</button>
-        <span class="status-pill" id="medicalRecordStatus">پرونده پزشکی جدید</span>
-      </div>
-      <div class="mini-note" style="margin-top:7px;">هر پرونده پزشکی شاغل تمام بخش‌های ۱ تا ۹ پرونده پزشکی را مستقل نگهداری می‌کند و داخل همان فرم/پرونده اصلی ذخیره می‌شود.</div>
-    </div>
-  </div>
-
-  <div id="medicalRecordsContainer">
   <!-- ===================== ۱- مشخصات فردی شاغل ===================== -->
   <div class="section">
     <div class="section-head"><span class="num">۱</span> مشخصات فردی شاغل</div>
@@ -1382,8 +1377,6 @@ window.PUBLIC_SUPABASE_CONFIG = {
   </div>
 
 
-  </div>
-
   <!-- ===================== ذخیره فرم ===================== -->
   <div class="section save-section">
     <div class="section-body save-body">
@@ -1645,42 +1638,17 @@ function getAllFields(){
   return {ids, keyed, radios};
 }
 
-function isMedicalElement(el){
-  return !!(el && el.closest && el.closest('#medicalRecordsContainer'));
-}
-
-function serializeScope(root){
-  const data = {};
-  (root || document).querySelectorAll('[id^="f_"]').forEach(el=>{
-    if(el.type === 'checkbox') data[el.id] = el.checked;
-    else data[el.id] = el.value;
-  });
-  (root || document).querySelectorAll('[data-k]').forEach(el=>{
-    data['k_'+el.dataset.k] = el.value;
-  });
-  const radioNames = new Set();
-  (root || document).querySelectorAll('input[type=radio][name]').forEach(el=>radioNames.add(el.name));
-  radioNames.forEach(name=>{
-    const checked = (root || document).querySelector(`input[name="${name}"]:checked`);
-    data['radio_'+name] = checked ? checked.value : '';
-  });
-  return data;
-}
-
-function serializeMedicalForm(){ return serializeScope(document.getElementById('medicalRecordsContainer')); }
-function serializeNonMedicalForm(){
+function serializeForm(){
   const data = {};
   document.querySelectorAll('[id^="f_"]').forEach(el=>{
-    if(isMedicalElement(el)) return;
     if(el.type === 'checkbox') data[el.id] = el.checked;
     else data[el.id] = el.value;
   });
   document.querySelectorAll('[data-k]').forEach(el=>{
-    if(isMedicalElement(el)) return;
     data['k_'+el.dataset.k] = el.value;
   });
   const radioNames = new Set();
-  document.querySelectorAll('input[type=radio][name]').forEach(el=>{ if(!isMedicalElement(el)) radioNames.add(el.name); });
+  document.querySelectorAll('input[type=radio][name]').forEach(el=>radioNames.add(el.name));
   radioNames.forEach(name=>{
     const checked = document.querySelector(`input[name="${name}"]:checked`);
     data['radio_'+name] = checked ? checked.value : '';
@@ -1688,163 +1656,35 @@ function serializeNonMedicalForm(){
   return data;
 }
 
-function serializeForm(){ return {...serializeNonMedicalForm(), ...serializeMedicalForm()}; }
-
-function applyScope(data, root){
-  data = data || {};
-  const scope = root || document;
-  scope.querySelectorAll('[id^="f_"]').forEach(el=>{
+function applyForm(data){
+  document.querySelectorAll('[id^="f_"]').forEach(el=>{
     if(!(el.id in data)) return;
     if(el.type === 'checkbox') el.checked = !!data[el.id];
     else el.value = data[el.id] || '';
   });
-  scope.querySelectorAll('[data-k]').forEach(el=>{
+  document.querySelectorAll('[data-k]').forEach(el=>{
     const k = 'k_'+el.dataset.k;
     el.value = (k in data) ? data[k] : '';
   });
-  scope.querySelectorAll('input[type=radio][name]').forEach(el=>{
+  document.querySelectorAll('input[type=radio][name]').forEach(el=>{
     const k = 'radio_'+el.name;
     el.checked = (data[k] === el.value);
   });
-}
-
-function applyForm(data){
-  applyScope(data || {}, document);
   updateSignaturePreview();
   if(window.updateMedicalPreviews) window.updateMedicalPreviews();
   renderCorrections();
-}
-
-function clearScope(root){
-  const scope = root || document;
-  scope.querySelectorAll('[id^="f_"]').forEach(el=>{
-    if(el.type === 'checkbox') el.checked = false; else el.value = '';
-  });
-  scope.querySelectorAll('[data-k]').forEach(el=> el.value = '');
-  scope.querySelectorAll('input[type=radio][name]').forEach(el=> el.checked = false);
 }
 
 function clearForm(){
-  clearScope(document);
+  document.querySelectorAll('[id^="f_"]').forEach(el=>{
+    if(el.type === 'checkbox') el.checked = false; else el.value = '';
+  });
+  document.querySelectorAll('[data-k]').forEach(el=> el.value = '');
+  document.querySelectorAll('input[type=radio][name]').forEach(el=> el.checked = false);
   updateSignaturePreview();
   if(window.updateMedicalPreviews) window.updateMedicalPreviews();
   renderCorrections();
 }
-
-// ---------- چند پرونده پزشکی مستقل داخل یک پرونده اصلی ----------
-let medicalRecords = [];
-let activeMedicalRecordId = null;
-
-function makeMedicalRecord(label){
-  return { id:'medical:'+Date.now()+':'+Math.random().toString(36).slice(2,9), label:label || 'پرونده پزشکی جدید', data:{} };
-}
-
-function snapshotActiveMedical(){
-  if(!activeMedicalRecordId) return;
-  const rec = medicalRecords.find(r=>r.id===activeMedicalRecordId);
-  if(rec) rec.data = serializeMedicalForm();
-}
-
-function renderMedicalRecordPicker(){
-  const picker = document.getElementById('medicalRecordPicker');
-  if(!picker) return;
-  picker.innerHTML = '<option value="">— پرونده پزشکی —</option>';
-  medicalRecords.forEach((rec,i)=>{
-    const opt=document.createElement('option');
-    opt.value=rec.id;
-    opt.textContent=(rec.label || ('پرونده پزشکی '+(i+1)));
-    picker.appendChild(opt);
-  });
-  picker.value = activeMedicalRecordId || '';
-  const status=document.getElementById('medicalRecordStatus');
-  if(status){
-    const idx=medicalRecords.findIndex(r=>r.id===activeMedicalRecordId);
-    status.textContent = idx>=0 ? `پرونده پزشکی ${toFaDigits(idx+1)} فعال است` : 'پرونده پزشکی جدید';
-  }
-}
-
-function activateMedicalRecord(id){
-  snapshotActiveMedical();
-  const rec=medicalRecords.find(r=>r.id===id);
-  if(!rec) return;
-  activeMedicalRecordId=id;
-  clearScope(document.getElementById('medicalRecordsContainer'));
-  applyScope(rec.data || {}, document.getElementById('medicalRecordsContainer'));
-  if(window.updateMedicalPreviews) window.updateMedicalPreviews();
-  renderCorrections();
-  renderMedicalRecordPicker();
-  markUnsaved();
-}
-
-function addMedicalRecord(){
-  snapshotActiveMedical();
-  const index=medicalRecords.length+1;
-  const rec=makeMedicalRecord('پرونده پزشکی '+toFaDigits(index));
-  medicalRecords.push(rec);
-  activeMedicalRecordId=rec.id;
-  clearScope(document.getElementById('medicalRecordsContainer'));
-  if(window.updateMedicalPreviews) window.updateMedicalPreviews();
-  renderMedicalRecordPicker();
-  markUnsaved();
-}
-
-function deleteMedicalRecord(){
-  if(!activeMedicalRecordId) return;
-  const idx=medicalRecords.findIndex(r=>r.id===activeMedicalRecordId);
-  if(idx<0) return;
-  if(!confirm('آیا از حذف این پرونده پزشکی اطمینان دارید؟')) return;
-  medicalRecords.splice(idx,1);
-  if(medicalRecords.length){
-    activeMedicalRecordId=medicalRecords[Math.max(0,idx-1)].id;
-    activateMedicalRecord(activeMedicalRecordId);
-  }else{
-    activeMedicalRecordId=null;
-    clearScope(document.getElementById('medicalRecordsContainer'));
-    renderMedicalRecordPicker();
-    markUnsaved();
-  }
-}
-
-function prepareMedicalRecordsForSave(){
-  snapshotActiveMedical();
-  return medicalRecords.map(r=>({id:r.id,label:r.label,data:r.data || {}}));
-}
-
-function loadMedicalRecords(records, legacyData){
-  if(Array.isArray(records) && records.length){
-    medicalRecords=records.map((r,i)=>({id:r.id || makeMedicalRecord().id,label:r.label || ('پرونده پزشکی '+toFaDigits(i+1)),data:r.data || {}}));
-  }else if(legacyData && Object.keys(legacyData).some(k=>k.startsWith('f_') || k.startsWith('radio_f_hist_') || k.startsWith('k_'))){
-    // سازگاری با رکوردهای قدیمی: اطلاعات پزشکی قبلی به عنوان پرونده پزشکی اول نگهداری می‌شود.
-    const medData={};
-    const root=document.getElementById('medicalRecordsContainer');
-    root.querySelectorAll('[id^="f_"]').forEach(el=>{ if(el.id in legacyData) medData[el.id]=legacyData[el.id]; });
-    root.querySelectorAll('[data-k]').forEach(el=>{ const k='k_'+el.dataset.k; if(k in legacyData) medData[k]=legacyData[k]; });
-    root.querySelectorAll('input[type=radio][name]').forEach(el=>{ const k='radio_'+el.name; if(k in legacyData) medData[k]=legacyData[k]; });
-    medicalRecords=[{id:'medical:legacy:1',label:'پرونده پزشکی ۱',data:medData}];
-  }else{
-    medicalRecords=[];
-  }
-  activeMedicalRecordId=medicalRecords[0]?.id || null;
-  if(activeMedicalRecordId) activateMedicalRecord(activeMedicalRecordId);
-  else { clearScope(document.getElementById('medicalRecordsContainer')); renderMedicalRecordPicker(); }
-}
-
-document.getElementById('btnAddMedicalRecord')?.addEventListener('click', addMedicalRecord);
-document.getElementById('btnDeleteMedicalRecord')?.addEventListener('click', deleteMedicalRecord);
-document.getElementById('medicalRecordPicker')?.addEventListener('change', e=>{ if(e.target.value) activateMedicalRecord(e.target.value); });
-
-// با تغییر هر فیلد پزشکی، رکورد فعال به‌صورت موقت در حافظه همین فرم به‌روز می‌شود.
-document.getElementById('medicalRecordsContainer')?.addEventListener('input', snapshotActiveMedical);
-document.getElementById('medicalRecordsContainer')?.addEventListener('change', snapshotActiveMedical);
-
-function ensureMedicalRecord(){
-  if(medicalRecords.length) return;
-  const rec=makeMedicalRecord('پرونده پزشکی ۱');
-  medicalRecords=[rec];
-  activeMedicalRecordId=rec.id;
-  renderMedicalRecordPicker();
-}
-ensureMedicalRecord();
 
 // ---------- اصلاحات انجام‌شده بین نوبت‌های بازدید (بخش ۶) ----------
 const VISIT_LABELS = ['نوبت اول', 'نوبت دوم', 'نوبت سوم', 'نوبت چهارم'];
@@ -1923,6 +1763,157 @@ document.querySelectorAll('.btn-clear-section').forEach(btn=>{
     markUnsaved();
   });
 });
+
+// ================= مدیریت چند پرونده پزشکی شاغل =================
+// این بخش فقط داده‌های بین «مشخصات پرونده» تا «نظریه نهایی» را مدیریت می‌کند.
+// اطلاعات بازدید کارگاه و سایر قسمت‌های فرم عمداً وارد medicalRecords نمی‌شوند.
+let medicalRecordsState = [];
+let currentMedicalRecordId = null;
+
+function getMedicalSections(){
+  const sections = [...document.querySelectorAll('.section')];
+  const start = sections.findIndex(sec => sec.querySelector('#f_case_no'));
+  const end = sections.findIndex(sec => sec.querySelector('#f_final_conditions'));
+  if(start < 0 || end < start) return [];
+  return sections.slice(start, end + 1);
+}
+
+function getMedicalElements(){
+  const sections = getMedicalSections();
+  const els = [];
+  sections.forEach(sec => sec.querySelectorAll('input[id^="f_"], textarea[id^="f_"], select[id^="f_"]').forEach(el => els.push(el)));
+  return els;
+}
+
+function serializeMedicalForm(){
+  const data = {};
+  getMedicalElements().forEach(el=>{
+    if(el.type === 'checkbox') data[el.id] = el.checked;
+    else if(el.type !== 'radio') data[el.id] = el.value;
+  });
+  const names = new Set();
+  getMedicalElements().forEach(el=>{ if(el.type === 'radio' && el.name) names.add(el.name); });
+  names.forEach(name=>{
+    const checked = getMedicalElements().find(el=>el.type==='radio' && el.name===name && el.checked);
+    data['radio_'+name] = checked ? checked.value : '';
+  });
+  return data;
+}
+
+function applyMedicalForm(data){
+  const d = data || {};
+  getMedicalElements().forEach(el=>{
+    if(el.type === 'radio'){
+      el.checked = d['radio_'+el.name] === el.value;
+    }else if(el.id in d){
+      if(el.type === 'checkbox') el.checked = !!d[el.id];
+      else el.value = d[el.id] ?? '';
+    }else{
+      if(el.type === 'checkbox') el.checked = false;
+      else el.value = '';
+    }
+  });
+  updateSignaturePreview();
+  if(window.updateMedicalPreviews) window.updateMedicalPreviews();
+}
+
+function clearMedicalForm(){ applyMedicalForm({}); }
+
+function medicalRecordLabel(record, index){
+  const d = record?.data || {};
+  const type = d.f_exam_type_period || 'پرونده پزشکی';
+  const date = d.f_case_date || d.f_exam_date2 || d.f_final_date || 'بدون تاریخ';
+  const worker = d.f_fullname ? ` — ${d.f_fullname}` : '';
+  return `${toFaDigits(index + 1)}. ${type} — ${date}${worker}`;
+}
+
+function renderMedicalRecordPicker(){
+  const picker = document.getElementById('medicalRecordPicker');
+  if(!picker) return;
+  picker.innerHTML = '<option value="">— انتخاب پرونده پزشکی —</option>';
+  medicalRecordsState.forEach((record, index)=>{
+    const opt = document.createElement('option');
+    opt.value = record.id;
+    opt.textContent = medicalRecordLabel(record, index);
+    picker.appendChild(opt);
+  });
+  picker.value = currentMedicalRecordId || '';
+}
+
+function syncCurrentMedicalRecord(){
+  if(!currentMedicalRecordId) return;
+  const idx = medicalRecordsState.findIndex(r=>r.id === currentMedicalRecordId);
+  if(idx < 0) return;
+  medicalRecordsState[idx].data = serializeMedicalForm();
+  medicalRecordsState[idx].updatedAt = new Date().toISOString();
+}
+
+function createMedicalRecord(){
+  syncCurrentMedicalRecord();
+  const id = 'medical:' + Date.now() + ':' + Math.random().toString(36).slice(2,8);
+  const record = { id, data:{}, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString() };
+  medicalRecordsState.push(record);
+  currentMedicalRecordId = id;
+  clearMedicalForm();
+  renderMedicalRecordPicker();
+  markUnsaved();
+}
+
+function loadMedicalRecord(id){
+  if(!id){ currentMedicalRecordId = null; clearMedicalForm(); renderMedicalRecordPicker(); return; }
+  syncCurrentMedicalRecord();
+  const record = medicalRecordsState.find(r=>r.id === id);
+  if(!record) return;
+  currentMedicalRecordId = id;
+  applyMedicalForm(record.data || {});
+  renderMedicalRecordPicker();
+  setStatus('پرونده پزشکی بارگذاری شد', true);
+}
+
+function deleteCurrentMedicalRecord(){
+  if(!currentMedicalRecordId) return;
+  if(!confirm('آیا از حذف این پرونده پزشکی اطمینان دارید؟')) return;
+  const idx = medicalRecordsState.findIndex(r=>r.id === currentMedicalRecordId);
+  if(idx < 0) return;
+  medicalRecordsState.splice(idx,1);
+  if(medicalRecordsState.length){
+    const next = medicalRecordsState[Math.max(0, idx-1)];
+    currentMedicalRecordId = next.id;
+    applyMedicalForm(next.data || {});
+  }else{
+    currentMedicalRecordId = null;
+    clearMedicalForm();
+  }
+  renderMedicalRecordPicker();
+  markUnsaved();
+}
+
+function ensureAtLeastOneMedicalRecord(){
+  if(medicalRecordsState.length) return;
+  const legacy = serializeMedicalForm();
+  const hasLegacy = Object.values(legacy).some(v => v !== '' && v !== false && v != null);
+  const id = 'medical:legacy:' + Date.now();
+  medicalRecordsState = [{id, data: hasLegacy ? legacy : {}, createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()}];
+  currentMedicalRecordId = id;
+  renderMedicalRecordPicker();
+}
+
+function getMedicalRecordsForSave(){
+  syncCurrentMedicalRecord();
+  return medicalRecordsState.map(r=>({
+    id:r.id,
+    data:{...(r.data||{})},
+    createdAt:r.createdAt || new Date().toISOString(),
+    updatedAt:r.updatedAt || new Date().toISOString()
+  }));
+}
+
+const btnAddMedicalRecord = document.getElementById('btnAddMedicalRecord');
+const medicalRecordPicker = document.getElementById('medicalRecordPicker');
+const btnDeleteMedicalRecord = document.getElementById('btnDeleteMedicalRecord');
+btnAddMedicalRecord?.addEventListener('click', createMedicalRecord);
+medicalRecordPicker?.addEventListener('change', e=> loadMedicalRecord(e.target.value));
+btnDeleteMedicalRecord?.addEventListener('click', deleteCurrentMedicalRecord);
 
 // ---------- storage ----------
 // دو حالت ذخیره‌سازی وجود دارد:
@@ -2137,15 +2128,13 @@ async function refreshList(){
 }
 
 document.getElementById('btnSave').addEventListener('click', async ()=>{
-  snapshotActiveMedical();
-  const data = serializeNonMedicalForm();
-  const medicalRecordsToSave = prepareMedicalRecordsForSave();
+  const data = serializeForm();
   const workshopName = document.getElementById('f_workshop_name')?.value.trim() || 'بدون‌نام';
-  const workerName = medicalRecordsToSave[0]?.data?.f_fullname || '';
-  const caseNo = medicalRecordsToSave[0]?.data?.f_case_no || '';
+  const workerName = document.getElementById('f_fullname')?.value.trim();
+  const caseNo = document.getElementById('f_case_no')?.value.trim();
   const label = [workshopName, workerName, caseNo ? ('پرونده ' + caseNo) : ''].filter(Boolean).join(' — ');
   const id = currentId || ('inspection:' + Date.now());
-  const payload = { meta:{label, savedAt:new Date().toISOString()}, data, medicalRecords:medicalRecordsToSave };
+  const payload = { meta:{label, savedAt:new Date().toISOString()}, data, medicalRecords:getMedicalRecordsForSave() };
 
   try{
     // Always keep the local record in sync.
@@ -2176,11 +2165,11 @@ document.getElementById('btnSave').addEventListener('click', async ()=>{
 
 document.getElementById('btnNew').addEventListener('click', ()=>{
   clearForm();
-  medicalRecords = [];
-  activeMedicalRecordId = null;
-  ensureMedicalRecord();
   currentId = null;
   recordPicker.value = '';
+  medicalRecordsState = [];
+  currentMedicalRecordId = null;
+  ensureAtLeastOneMedicalRecord();
   markUnsaved();
 });
 
@@ -2193,7 +2182,11 @@ document.getElementById('btnDelete').addEventListener('click', async ()=>{
     const rec = await window.storage.get(id, false);
     if(rec){
       await window.storage.delete(id, false);
-      if(currentId === id){ clearForm(); currentId = null; }
+      if(currentId === id){
+        clearForm(); currentId = null;
+        medicalRecordsState = []; currentMedicalRecordId = null;
+        ensureAtLeastOneMedicalRecord();
+      }
       await refreshList();
       await refreshStats();
       recordPicker.value = '';
@@ -2210,6 +2203,15 @@ recordPicker.addEventListener('change', async ()=>{
     if(rec && rec.value){
       const parsed = JSON.parse(rec.value);
       applyForm(parsed.data || {});
+      medicalRecordsState = Array.isArray(parsed.medicalRecords) ? parsed.medicalRecords : [];
+      if(medicalRecordsState.length){
+        currentMedicalRecordId = medicalRecordsState[0].id;
+        applyMedicalForm(medicalRecordsState[0].data || {});
+        renderMedicalRecordPicker();
+      }else{
+        currentMedicalRecordId = null;
+        ensureAtLeastOneMedicalRecord();
+      }
       currentId = id;
       setStatus('بارگذاری شد', true);
     }
@@ -2323,18 +2325,27 @@ function buildAllFields(){
   fields.push(['f_signature','امضاء','text']);
   [1,2,3,4].forEach(n=> fields.push([`f_remarks_t${n}`, `ملاحظات و اقدامات پیشنهادی — نوبت${n}`, 'text']));
 
-  // فیلدهای دارای data-label از پرونده پزشکی ادغام‌شده نیز در آمار ثبت شوند.
+  // فقط فیلدهای خارج از محدوده «پرونده پزشکی شاغل» وارد آمار کارگاه شوند.
+  // فیلدهای پزشکی عمداً در آمار کارگاه‌ها نمایش داده نمی‌شوند.
   const existingKeys = new Set(fields.map(f=>f[0]));
+  const medicalSections = getMedicalSections();
+  const medicalIds = new Set();
+  const medicalRadioNames = new Set();
+  medicalSections.forEach(sec=>{
+    sec.querySelectorAll('[id^="f_"]').forEach(el=>medicalIds.add(el.id));
+    sec.querySelectorAll('input[type="radio"][name]').forEach(el=>medicalRadioNames.add(el.name));
+  });
   document.querySelectorAll('[id^="f_"][data-label]').forEach(el=>{
-    if(isMedicalElement(el)) return;
+    if(medicalIds.has(el.id)) return;
     if(!existingKeys.has(el.id)){
       fields.push([el.id, el.dataset.label || el.id, el.type === 'checkbox' ? 'bool' : 'text']);
       existingKeys.add(el.id);
     }
   });
   const radioNames = new Set();
-  document.querySelectorAll('input[type="radio"][name]').forEach(el=>{ if(!isMedicalElement(el)) radioNames.add(el.name); });
+  document.querySelectorAll('input[type="radio"][name]').forEach(el=> radioNames.add(el.name));
   radioNames.forEach(name=>{
+    if(medicalRadioNames.has(name)) return;
     const key = 'radio_' + name;
     if(!existingKeys.has(key)){
       fields.push([key, 'گزینه «' + name + '»', 'text']);
@@ -2600,6 +2611,8 @@ document.getElementById('btnExportExcel').addEventListener('click', ()=>{
   XLSX.writeFile(wb, 'آمار-کارگاه-ها.xlsx');
 });
 
+ensureAtLeastOneMedicalRecord();
+renderMedicalRecordPicker();
 refreshList();
 refreshStats();
 renderCorrections();
@@ -2972,10 +2985,9 @@ function randomCode(){
 }
 function makeCaseCode(){ return 'BH-'+Date.now().toString(36).toUpperCase()+'-'+randomCode(); }
 function workflowData(){
-  if(typeof snapshotActiveMedical==='function') snapshotActiveMedical();
-  const base = typeof serializeNonMedicalForm === 'function' ? serializeNonMedicalForm() : {};
-  const medical = typeof prepareMedicalRecordsForSave === 'function' ? prepareMedicalRecordsForSave() : [];
-  return { data: base, medicalRecords: medical, workflow: {
+  const base = typeof serializeForm === 'function' ? serializeForm() : {};
+  const medicalRecords = typeof getMedicalRecordsForSave === 'function' ? getMedicalRecordsForSave() : [];
+  return { data: base, medicalRecords, workflow: {
     role:$w('wf_role')?.value||'', recipient:$w('wf_recipient')?.value||'', contact:$w('wf_contact')?.value||'',
     status:$w('wf_status')?.value||'آماده ارسال', message:$w('wf_message')?.value||'',
     lastBy:$w('wf_last_by')?.value||'ثبت‌کننده فرم', lastAt:new Date().toISOString(), caseId:onlineCaseId, accessCode:onlineAccessCode
@@ -3141,6 +3153,16 @@ async function loadOnline(){
     if(typeof applyForm==='function' && p.data)
       applyForm(p.data);
 
+    medicalRecordsState = Array.isArray(p.medicalRecords) ? p.medicalRecords : [];
+    if(medicalRecordsState.length){
+      currentMedicalRecordId = medicalRecordsState[0].id;
+      applyMedicalForm(medicalRecordsState[0].data || {});
+      renderMedicalRecordPicker();
+    }else{
+      currentMedicalRecordId = null;
+      ensureAtLeastOneMedicalRecord();
+    }
+
     onlineCaseId=cid;
     onlineAccessCode=code;
     currentId='inspection:online:'+cid;
@@ -3182,6 +3204,15 @@ async function refreshCurrentOnlineCase(){
     if(!row) return;
     const p=row.form_data||{};
     if(typeof applyForm==='function' && p.data) applyForm(p.data);
+    medicalRecordsState = Array.isArray(p.medicalRecords) ? p.medicalRecords : [];
+    if(medicalRecordsState.length){
+      currentMedicalRecordId = medicalRecordsState[0].id;
+      applyMedicalForm(medicalRecordsState[0].data || {});
+      renderMedicalRecordPicker();
+    }else{
+      currentMedicalRecordId = null;
+      ensureAtLeastOneMedicalRecord();
+    }
     const w=p.workflow||{};
     ['role','recipient','contact','status','message','lastBy'].forEach(k=>{
       const el=$w('wf_'+k);
