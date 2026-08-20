@@ -434,16 +434,6 @@ table.grid td.hazcell{ text-align:right; vertical-align:top; padding:8px; }
 
 .mini-note{ font-size:11.8px; color:#7a8580; margin-top:6px; }
 
-/* ---------- multi medical examinations (بخش ۵) ---------- */
-.exam-record{ border:1px solid var(--line); border-radius:6px; padding:12px 14px; margin-bottom:12px; background:#fff; }
-.exam-record:last-child{ margin-bottom:0; }
-.exam-record[data-active="false"]{ display:none; }
-@media print{
-  .exam-manager{ display:none !important; }
-  .exam-record[data-active="false"]{ display:block !important; }
-  .exam-record{ break-inside:avoid; }
-}
-
 /* ---------- examination systems (بخش ۵) ---------- */
 .exam-system{
   border:1px solid var(--line); border-radius:5px; padding:12px 14px; margin-bottom:12px; background:#fbfaf6;
@@ -1008,6 +998,21 @@ window.PUBLIC_SUPABASE_CONFIG = {
     </div>
   </div>
 
+  <!-- ===================== مدیریت پرونده‌های پزشکی شاغل ===================== -->
+  <div id="medicalRecordsManager" class="section" style="margin-bottom:12px;">
+    <div class="section-head"><span class="num">پرونده</span> مدیریت پرونده‌های پزشکی شاغل</div>
+    <div class="section-body" style="padding:10px 14px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button type="button" class="btn-primary" id="btnAddMedicalRecord">+ افزودن پرونده پزشکی جدید</button>
+        <select id="medicalRecordPicker" style="min-width:260px;"><option value="">— پرونده پزشکی —</option></select>
+        <button type="button" class="btn-danger" id="btnDeleteMedicalRecord">حذف پرونده پزشکی</button>
+        <span class="status-pill" id="medicalRecordStatus">پرونده پزشکی جدید</span>
+      </div>
+      <div class="mini-note" style="margin-top:7px;">هر پرونده پزشکی شاغل تمام بخش‌های ۱ تا ۹ پرونده پزشکی را مستقل نگهداری می‌کند و داخل همان فرم/پرونده اصلی ذخیره می‌شود.</div>
+    </div>
+  </div>
+
+  <div id="medicalRecordsContainer">
   <!-- ===================== ۱- مشخصات فردی شاغل ===================== -->
   <div class="section">
     <div class="section-head"><span class="num">۱</span> مشخصات فردی شاغل</div>
@@ -1125,15 +1130,6 @@ window.PUBLIC_SUPABASE_CONFIG = {
       <button type="button" class="btn-clear-section" data-clear-target="med-box-5">پاک کردن اطلاعات این بخش</button>
     </div>
     <div class="section-body" id="med-box-5">
-      <div class="exam-manager" id="examManager" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">
-        <button type="button" class="btn-primary" id="btnAddMedicalExam">+ افزودن معاینه جدید</button>
-        <select id="medicalExamPicker" style="min-width:250px;"></select>
-        <button type="button" class="btn-danger" id="btnDeleteMedicalExam">حذف معاینه انتخابی</button>
-        <span class="status-pill" id="medicalExamCount"></span>
-      </div>
-      <div id="medicalExamRecords">
-        <div class="exam-record" data-exam-index="1">
-
       <div class="field-grid">
         <div class="field"><label>تاریخ</label><input type="text" id="f_exam_date2" data-label="تاریخ معاینه اولیه" placeholder="روز/ماه/سال"></div>
         <div class="field"><label>وزن (Kg)</label><input type="text" id="f_weight" data-label="وزن"></div>
@@ -1167,11 +1163,9 @@ window.PUBLIC_SUPABASE_CONFIG = {
             <button type="button" class="btn-danger" id="btnClearExamSig">حذف امضا</button>
           </div>
         </div>
-      </div>        </div>
       </div>
     </div>
   </div>
-
 
   <!-- ===================== ۶- آزمایشها ===================== -->
   <div class="section">
@@ -1387,6 +1381,8 @@ window.PUBLIC_SUPABASE_CONFIG = {
     </div>
   </div>
 
+
+  </div>
 
   <!-- ===================== ذخیره فرم ===================== -->
   <div class="section save-section">
@@ -1649,71 +1645,206 @@ function getAllFields(){
   return {ids, keyed, radios};
 }
 
-function serializeForm(){
+function isMedicalElement(el){
+  return !!(el && el.closest && el.closest('#medicalRecordsContainer'));
+}
+
+function serializeScope(root){
+  const data = {};
+  (root || document).querySelectorAll('[id^="f_"]').forEach(el=>{
+    if(el.type === 'checkbox') data[el.id] = el.checked;
+    else data[el.id] = el.value;
+  });
+  (root || document).querySelectorAll('[data-k]').forEach(el=>{
+    data['k_'+el.dataset.k] = el.value;
+  });
+  const radioNames = new Set();
+  (root || document).querySelectorAll('input[type=radio][name]').forEach(el=>radioNames.add(el.name));
+  radioNames.forEach(name=>{
+    const checked = (root || document).querySelector(`input[name="${name}"]:checked`);
+    data['radio_'+name] = checked ? checked.value : '';
+  });
+  return data;
+}
+
+function serializeMedicalForm(){ return serializeScope(document.getElementById('medicalRecordsContainer')); }
+function serializeNonMedicalForm(){
   const data = {};
   document.querySelectorAll('[id^="f_"]').forEach(el=>{
-    if(el.closest('.exam-record')) return;
+    if(isMedicalElement(el)) return;
     if(el.type === 'checkbox') data[el.id] = el.checked;
     else data[el.id] = el.value;
   });
   document.querySelectorAll('[data-k]').forEach(el=>{
+    if(isMedicalElement(el)) return;
     data['k_'+el.dataset.k] = el.value;
   });
   const radioNames = new Set();
-  document.querySelectorAll('input[type=radio][name]').forEach(el=>{
-    if(el.closest('.exam-record')) return;
-    radioNames.add(el.name);
-  });
+  document.querySelectorAll('input[type=radio][name]').forEach(el=>{ if(!isMedicalElement(el)) radioNames.add(el.name); });
   radioNames.forEach(name=>{
     const checked = document.querySelector(`input[name="${name}"]:checked`);
     data['radio_'+name] = checked ? checked.value : '';
   });
-  data.medical_exams = window.getMedicalExamsData ? window.getMedicalExamsData() : [];
   return data;
 }
 
-function applyForm(data){
-  document.querySelectorAll('[id^="f_"]').forEach(el=>{
-    if(el.closest('.exam-record')) return;
+function serializeForm(){ return {...serializeNonMedicalForm(), ...serializeMedicalForm()}; }
+
+function applyScope(data, root){
+  data = data || {};
+  const scope = root || document;
+  scope.querySelectorAll('[id^="f_"]').forEach(el=>{
     if(!(el.id in data)) return;
     if(el.type === 'checkbox') el.checked = !!data[el.id];
     else el.value = data[el.id] || '';
   });
-  document.querySelectorAll('[data-k]').forEach(el=>{
+  scope.querySelectorAll('[data-k]').forEach(el=>{
     const k = 'k_'+el.dataset.k;
     el.value = (k in data) ? data[k] : '';
   });
-  document.querySelectorAll('input[type=radio][name]').forEach(el=>{
-    if(el.closest('.exam-record')) return;
+  scope.querySelectorAll('input[type=radio][name]').forEach(el=>{
     const k = 'radio_'+el.name;
     el.checked = (data[k] === el.value);
   });
-  if(window.applyMedicalExams){
-    const records = Array.isArray(data.medical_exams) && data.medical_exams.length
-      ? data.medical_exams
-      : (window.getLegacyMedicalExamData ? [window.getLegacyMedicalExamData(data)] : []);
-    window.applyMedicalExams(records);
-  }
+}
+
+function applyForm(data){
+  applyScope(data || {}, document);
   updateSignaturePreview();
   if(window.updateMedicalPreviews) window.updateMedicalPreviews();
   renderCorrections();
 }
 
-function clearForm(){
-  document.querySelectorAll('[id^="f_"]').forEach(el=>{
-    if(el.closest('.exam-record')) return;
+function clearScope(root){
+  const scope = root || document;
+  scope.querySelectorAll('[id^="f_"]').forEach(el=>{
     if(el.type === 'checkbox') el.checked = false; else el.value = '';
   });
-  document.querySelectorAll('[data-k]').forEach(el=> el.value = '');
-  document.querySelectorAll('input[type=radio][name]').forEach(el=>{
-    if(el.closest('.exam-record')) return;
-    el.checked = false;
-  });
-  if(window.resetMedicalExams) window.resetMedicalExams();
+  scope.querySelectorAll('[data-k]').forEach(el=> el.value = '');
+  scope.querySelectorAll('input[type=radio][name]').forEach(el=> el.checked = false);
+}
+
+function clearForm(){
+  clearScope(document);
   updateSignaturePreview();
   if(window.updateMedicalPreviews) window.updateMedicalPreviews();
   renderCorrections();
 }
+
+// ---------- چند پرونده پزشکی مستقل داخل یک پرونده اصلی ----------
+let medicalRecords = [];
+let activeMedicalRecordId = null;
+
+function makeMedicalRecord(label){
+  return { id:'medical:'+Date.now()+':'+Math.random().toString(36).slice(2,9), label:label || 'پرونده پزشکی جدید', data:{} };
+}
+
+function snapshotActiveMedical(){
+  if(!activeMedicalRecordId) return;
+  const rec = medicalRecords.find(r=>r.id===activeMedicalRecordId);
+  if(rec) rec.data = serializeMedicalForm();
+}
+
+function renderMedicalRecordPicker(){
+  const picker = document.getElementById('medicalRecordPicker');
+  if(!picker) return;
+  picker.innerHTML = '<option value="">— پرونده پزشکی —</option>';
+  medicalRecords.forEach((rec,i)=>{
+    const opt=document.createElement('option');
+    opt.value=rec.id;
+    opt.textContent=(rec.label || ('پرونده پزشکی '+(i+1)));
+    picker.appendChild(opt);
+  });
+  picker.value = activeMedicalRecordId || '';
+  const status=document.getElementById('medicalRecordStatus');
+  if(status){
+    const idx=medicalRecords.findIndex(r=>r.id===activeMedicalRecordId);
+    status.textContent = idx>=0 ? `پرونده پزشکی ${toFaDigits(idx+1)} فعال است` : 'پرونده پزشکی جدید';
+  }
+}
+
+function activateMedicalRecord(id){
+  snapshotActiveMedical();
+  const rec=medicalRecords.find(r=>r.id===id);
+  if(!rec) return;
+  activeMedicalRecordId=id;
+  clearScope(document.getElementById('medicalRecordsContainer'));
+  applyScope(rec.data || {}, document.getElementById('medicalRecordsContainer'));
+  if(window.updateMedicalPreviews) window.updateMedicalPreviews();
+  renderCorrections();
+  renderMedicalRecordPicker();
+  markUnsaved();
+}
+
+function addMedicalRecord(){
+  snapshotActiveMedical();
+  const index=medicalRecords.length+1;
+  const rec=makeMedicalRecord('پرونده پزشکی '+toFaDigits(index));
+  medicalRecords.push(rec);
+  activeMedicalRecordId=rec.id;
+  clearScope(document.getElementById('medicalRecordsContainer'));
+  if(window.updateMedicalPreviews) window.updateMedicalPreviews();
+  renderMedicalRecordPicker();
+  markUnsaved();
+}
+
+function deleteMedicalRecord(){
+  if(!activeMedicalRecordId) return;
+  const idx=medicalRecords.findIndex(r=>r.id===activeMedicalRecordId);
+  if(idx<0) return;
+  if(!confirm('آیا از حذف این پرونده پزشکی اطمینان دارید؟')) return;
+  medicalRecords.splice(idx,1);
+  if(medicalRecords.length){
+    activeMedicalRecordId=medicalRecords[Math.max(0,idx-1)].id;
+    activateMedicalRecord(activeMedicalRecordId);
+  }else{
+    activeMedicalRecordId=null;
+    clearScope(document.getElementById('medicalRecordsContainer'));
+    renderMedicalRecordPicker();
+    markUnsaved();
+  }
+}
+
+function prepareMedicalRecordsForSave(){
+  snapshotActiveMedical();
+  return medicalRecords.map(r=>({id:r.id,label:r.label,data:r.data || {}}));
+}
+
+function loadMedicalRecords(records, legacyData){
+  if(Array.isArray(records) && records.length){
+    medicalRecords=records.map((r,i)=>({id:r.id || makeMedicalRecord().id,label:r.label || ('پرونده پزشکی '+toFaDigits(i+1)),data:r.data || {}}));
+  }else if(legacyData && Object.keys(legacyData).some(k=>k.startsWith('f_') || k.startsWith('radio_f_hist_') || k.startsWith('k_'))){
+    // سازگاری با رکوردهای قدیمی: اطلاعات پزشکی قبلی به عنوان پرونده پزشکی اول نگهداری می‌شود.
+    const medData={};
+    const root=document.getElementById('medicalRecordsContainer');
+    root.querySelectorAll('[id^="f_"]').forEach(el=>{ if(el.id in legacyData) medData[el.id]=legacyData[el.id]; });
+    root.querySelectorAll('[data-k]').forEach(el=>{ const k='k_'+el.dataset.k; if(k in legacyData) medData[k]=legacyData[k]; });
+    root.querySelectorAll('input[type=radio][name]').forEach(el=>{ const k='radio_'+el.name; if(k in legacyData) medData[k]=legacyData[k]; });
+    medicalRecords=[{id:'medical:legacy:1',label:'پرونده پزشکی ۱',data:medData}];
+  }else{
+    medicalRecords=[];
+  }
+  activeMedicalRecordId=medicalRecords[0]?.id || null;
+  if(activeMedicalRecordId) activateMedicalRecord(activeMedicalRecordId);
+  else { clearScope(document.getElementById('medicalRecordsContainer')); renderMedicalRecordPicker(); }
+}
+
+document.getElementById('btnAddMedicalRecord')?.addEventListener('click', addMedicalRecord);
+document.getElementById('btnDeleteMedicalRecord')?.addEventListener('click', deleteMedicalRecord);
+document.getElementById('medicalRecordPicker')?.addEventListener('change', e=>{ if(e.target.value) activateMedicalRecord(e.target.value); });
+
+// با تغییر هر فیلد پزشکی، رکورد فعال به‌صورت موقت در حافظه همین فرم به‌روز می‌شود.
+document.getElementById('medicalRecordsContainer')?.addEventListener('input', snapshotActiveMedical);
+document.getElementById('medicalRecordsContainer')?.addEventListener('change', snapshotActiveMedical);
+
+function ensureMedicalRecord(){
+  if(medicalRecords.length) return;
+  const rec=makeMedicalRecord('پرونده پزشکی ۱');
+  medicalRecords=[rec];
+  activeMedicalRecordId=rec.id;
+  renderMedicalRecordPicker();
+}
+ensureMedicalRecord();
 
 // ---------- اصلاحات انجام‌شده بین نوبت‌های بازدید (بخش ۶) ----------
 const VISIT_LABELS = ['نوبت اول', 'نوبت دوم', 'نوبت سوم', 'نوبت چهارم'];
@@ -2006,13 +2137,15 @@ async function refreshList(){
 }
 
 document.getElementById('btnSave').addEventListener('click', async ()=>{
-  const data = serializeForm();
+  snapshotActiveMedical();
+  const data = serializeNonMedicalForm();
+  const medicalRecordsToSave = prepareMedicalRecordsForSave();
   const workshopName = document.getElementById('f_workshop_name')?.value.trim() || 'بدون‌نام';
-  const workerName = document.getElementById('f_fullname')?.value.trim();
-  const caseNo = document.getElementById('f_case_no')?.value.trim();
+  const workerName = medicalRecordsToSave[0]?.data?.f_fullname || '';
+  const caseNo = medicalRecordsToSave[0]?.data?.f_case_no || '';
   const label = [workshopName, workerName, caseNo ? ('پرونده ' + caseNo) : ''].filter(Boolean).join(' — ');
   const id = currentId || ('inspection:' + Date.now());
-  const payload = { meta:{label, savedAt:new Date().toISOString()}, data };
+  const payload = { meta:{label, savedAt:new Date().toISOString()}, data, medicalRecords:medicalRecordsToSave };
 
   try{
     // Always keep the local record in sync.
@@ -2043,6 +2176,9 @@ document.getElementById('btnSave').addEventListener('click', async ()=>{
 
 document.getElementById('btnNew').addEventListener('click', ()=>{
   clearForm();
+  medicalRecords = [];
+  activeMedicalRecordId = null;
+  ensureMedicalRecord();
   currentId = null;
   recordPicker.value = '';
   markUnsaved();
@@ -2190,13 +2326,14 @@ function buildAllFields(){
   // فیلدهای دارای data-label از پرونده پزشکی ادغام‌شده نیز در آمار ثبت شوند.
   const existingKeys = new Set(fields.map(f=>f[0]));
   document.querySelectorAll('[id^="f_"][data-label]').forEach(el=>{
+    if(isMedicalElement(el)) return;
     if(!existingKeys.has(el.id)){
       fields.push([el.id, el.dataset.label || el.id, el.type === 'checkbox' ? 'bool' : 'text']);
       existingKeys.add(el.id);
     }
   });
   const radioNames = new Set();
-  document.querySelectorAll('input[type="radio"][name]').forEach(el=> radioNames.add(el.name));
+  document.querySelectorAll('input[type="radio"][name]').forEach(el=>{ if(!isMedicalElement(el)) radioNames.add(el.name); });
   radioNames.forEach(name=>{
     const key = 'radio_' + name;
     if(!existingKeys.has(key)){
@@ -2655,211 +2792,6 @@ BODY_SYSTEMS.forEach(sys=>{
   examSystemsContainer.appendChild(div);
 });
 
-// ================= مدیریت چند معاینه در یک پرونده =================
-(function(){
-  const container = document.getElementById('medicalExamRecords');
-  const picker = document.getElementById('medicalExamPicker');
-  const addBtn = document.getElementById('btnAddMedicalExam');
-  const deleteBtn = document.getElementById('btnDeleteMedicalExam');
-  const countEl = document.getElementById('medicalExamCount');
-  if(!container || !picker || !addBtn || !deleteBtn) return;
-
-  let activeIndex = 1;
-  let examSeq = 1;
-  const updatePreviewFns = new Map();
-
-  function fa(n){ return typeof toFaDigits === 'function' ? toFaDigits(n) : String(n); }
-
-  function ensureExamKeys(panel){
-    panel.querySelectorAll('[id]').forEach(el=>{
-      if(el.id && !el.dataset.examKey) el.dataset.examKey = el.id.replace(/__exam\d+$/,'');
-    });
-  }
-
-  function setupPanel(panel, index){
-    panel.dataset.examIndex = String(index);
-    ensureExamKeys(panel);
-    const upload = panel.querySelector('input[type=file][id$="examSigUpload"]');
-    const hidden = panel.querySelector('input[type=hidden][id$="exam_sig"]');
-    const preview = panel.querySelector('img[id$="examSigPreview"]');
-    const placeholder = panel.querySelector('[id$="examSigPlaceholder"]');
-    const clear = panel.querySelector('button[id$="btnClearExamSig"]');
-    if(upload && hidden && preview && placeholder){
-      const update = ()=>{
-        if(hidden.value){
-          preview.src = hidden.value; preview.style.display='block'; placeholder.style.display='none';
-        }else{
-          preview.removeAttribute('src'); preview.style.display='none'; placeholder.style.display='block';
-        }
-      };
-      updatePreviewFns.set(index, update);
-      if(!upload.dataset.examBound){
-        upload.dataset.examBound='1';
-        upload.addEventListener('change',()=>{
-          const file=upload.files && upload.files[0];
-          if(!file) return;
-          if(!file.type.startsWith('image/')){
-            alert('لطفاً یک فایل تصویری برای امضا انتخاب کنید.');
-            upload.value=''; return;
-          }
-          const reader=new FileReader();
-          reader.onload=()=>{ hidden.value=reader.result; update(); markUnsaved(); };
-          reader.onerror=()=>alert('خطا در خواندن فایل امضا.');
-          reader.readAsDataURL(file);
-        });
-      }
-      if(clear && !clear.dataset.examBound){
-        clear.dataset.examBound='1';
-        clear.addEventListener('click',()=>{ hidden.value=''; upload.value=''; update(); markUnsaved(); });
-      }
-    }
-  }
-
-  function panelData(panel){
-    const out={};
-    panel.querySelectorAll('[data-exam-key]').forEach(el=>{
-      const key=el.dataset.examKey;
-      if(!key) return;
-      if(el.type==='checkbox') out[key]=!!el.checked;
-      else if(el.type!=='file') out[key]=el.value;
-    });
-    return out;
-  }
-
-  function setPanelData(panel, data){
-    data=data||{};
-    panel.querySelectorAll('[data-exam-key]').forEach(el=>{
-      const key=el.dataset.examKey;
-      if(!(key in data)) return;
-      if(el.type==='checkbox') el.checked=!!data[key];
-      else if(el.type!=='file') el.value=data[key] ?? '';
-    });
-    const fn=updatePreviewFns.get(Number(panel.dataset.examIndex));
-    if(fn) fn();
-  }
-
-  function titleFor(panel,index){
-    const dateEl=panel.querySelector('[data-exam-key="f_exam_date2"]');
-    const date=(dateEl?.value||'').trim();
-    return `معاینه ${fa(index)}${date ? ' — تاریخ: '+date : ''}`;
-  }
-
-  function refreshPicker(){
-    picker.innerHTML='';
-    const panels=[...container.querySelectorAll('.exam-record')];
-    panels.forEach(panel=>{
-      const idx=Number(panel.dataset.examIndex);
-      const opt=document.createElement('option');
-      opt.value=String(idx);
-      opt.textContent=titleFor(panel,idx);
-      picker.appendChild(opt);
-      panel.dataset.active=(idx===activeIndex?'true':'false');
-    });
-    picker.value=String(activeIndex);
-    countEl.textContent=`${fa(panels.length)} معاینه ثبت شده`;
-  }
-
-  function addPanel(data={}){
-    const first=container.querySelector('.exam-record');
-    examSeq++;
-    const clone=first.cloneNode(true);
-    clone.dataset.examIndex=String(examSeq);
-    clone.dataset.active='false';
-    clone.querySelectorAll('[id]').forEach(el=>{
-      const old=el.id;
-      const key=el.dataset.examKey || old.replace(/__exam\d+$/,'');
-      el.dataset.examKey=key;
-      el.id=key+'__exam'+examSeq;
-    });
-    clone.querySelectorAll('label[for]').forEach(l=>{
-      const old=l.getAttribute('for');
-      if(old) l.setAttribute('for',old.replace(/__exam\d+$/,'')+'__exam'+examSeq);
-    });
-    clone.querySelectorAll('[name]').forEach(el=>{
-      if(el.name) el.name=el.name.replace(/__exam\d+$/,'')+'__exam'+examSeq;
-    });
-    clone.querySelectorAll('input,textarea,select').forEach(el=>{
-      if(el.type==='checkbox' || el.type==='radio') el.checked=false;
-      else if(el.type!=='file') el.value='';
-    });
-    const img=clone.querySelector('img[id$="examSigPreview"]');
-    const ph=clone.querySelector('[id$="examSigPlaceholder"]');
-    if(img){img.removeAttribute('src');img.style.display='none';}
-    if(ph) ph.style.display='block';
-    container.appendChild(clone);
-    setupPanel(clone,examSeq);
-    setPanelData(clone,data);
-    activeIndex=examSeq;
-    refreshPicker();
-    markUnsaved();
-  }
-
-  function deleteActive(){
-    const panels=[...container.querySelectorAll('.exam-record')];
-    if(panels.length<=1){
-      setPanelData(panels[0],{});
-      activeIndex=1;
-      refreshPicker();
-      markUnsaved();
-      return;
-    }
-    if(!confirm('آیا از حذف معاینه انتخابی مطمئن هستید؟')) return;
-    const p=panels.find(x=>Number(x.dataset.examIndex)===activeIndex);
-    if(p) p.remove();
-    const remaining=[...container.querySelectorAll('.exam-record')];
-    activeIndex=Number(remaining[remaining.length-1].dataset.examIndex);
-    refreshPicker();
-    markUnsaved();
-  }
-
-  const first=container.querySelector('.exam-record');
-  ensureExamKeys(first);
-  setupPanel(first,1);
-  refreshPicker();
-
-  picker.addEventListener('change',()=>{ activeIndex=Number(picker.value); refreshPicker(); });
-  addBtn.addEventListener('click',()=>addPanel({}));
-  deleteBtn.addEventListener('click',deleteActive);
-
-  window.getMedicalExamsData=()=>[...container.querySelectorAll('.exam-record')].map(panelData);
-
-  window.getLegacyMedicalExamData=(data)=>{
-    const firstData={};
-    const firstPanel=container.querySelector('.exam-record');
-    if(!firstPanel) return firstData;
-    firstPanel.querySelectorAll('[data-exam-key]').forEach(el=>{
-      const k=el.dataset.examKey;
-      if(k in data) firstData[k]=data[k];
-    });
-    return firstData;
-  };
-
-  window.applyMedicalExams=(records)=>{
-    const list=Array.isArray(records)&&records.length?records:[{}];
-    [...container.querySelectorAll('.exam-record')].slice(1).forEach(p=>p.remove());
-    activeIndex=1; examSeq=1; updatePreviewFns.clear();
-    const firstPanel=container.querySelector('.exam-record');
-    setupPanel(firstPanel,1);
-    setPanelData(firstPanel,list[0]||{});
-    for(let i=1;i<list.length;i++) addPanel(list[i]||{});
-    activeIndex=1;
-    refreshPicker();
-  };
-
-  window.resetMedicalExams=()=>{
-    [...container.querySelectorAll('.exam-record')].slice(1).forEach(p=>p.remove());
-    activeIndex=1; examSeq=1; updatePreviewFns.clear();
-    const firstPanel=container.querySelector('.exam-record');
-    setupPanel(firstPanel,1);
-    setPanelData(firstPanel,{});
-    refreshPicker();
-  };
-
-  window.updateMedicalPreviews=()=>{
-    updatePreviewFns.forEach(fn=>{try{fn();}catch(e){}});
-  };
-})();
-
 // ================= بخش ۶: آزمایش‌های تخصصی/واکسیناسیون =================
 const labSpecialBody = document.getElementById('labSpecialBody');
 for(let r = 1; r <= 3; r++){
@@ -2961,11 +2893,12 @@ function setupImageUpload(uploadId, hiddenId, previewId, placeholderId, clearBtn
 }
 
 const updatePhotoPreview = setupImageUpload('photoUpload','f_photo','photoPreview','photoPlaceholder','btnClearPhoto','لطفاً یک فایل تصویری برای عکس انتخاب کنید.','خطا در خواندن فایل عکس.');
-const updateExamSigPreview = null;
+const updateExamSigPreview = setupImageUpload('examSigUpload','f_exam_sig','examSigPreview','examSigPlaceholder','btnClearExamSig','لطفاً یک فایل تصویری برای امضا انتخاب کنید.','خطا در خواندن فایل امضا.');
 const updateFinalSigPreview = setupImageUpload('finalSigUpload','f_final_sig','finalSigPreview','finalSigPlaceholder','btnClearFinalSig','لطفاً یک فایل تصویری برای امضا انتخاب کنید.','خطا در خواندن فایل امضا.');
 
 function updateAllPreviews(){
   if(updatePhotoPreview) updatePhotoPreview();
+  if(updateExamSigPreview) updateExamSigPreview();
   if(updateFinalSigPreview) updateFinalSigPreview();
 }
 
@@ -3039,8 +2972,10 @@ function randomCode(){
 }
 function makeCaseCode(){ return 'BH-'+Date.now().toString(36).toUpperCase()+'-'+randomCode(); }
 function workflowData(){
-  const base = typeof serializeForm === 'function' ? serializeForm() : {};
-  return { data: base, workflow: {
+  if(typeof snapshotActiveMedical==='function') snapshotActiveMedical();
+  const base = typeof serializeNonMedicalForm === 'function' ? serializeNonMedicalForm() : {};
+  const medical = typeof prepareMedicalRecordsForSave === 'function' ? prepareMedicalRecordsForSave() : [];
+  return { data: base, medicalRecords: medical, workflow: {
     role:$w('wf_role')?.value||'', recipient:$w('wf_recipient')?.value||'', contact:$w('wf_contact')?.value||'',
     status:$w('wf_status')?.value||'آماده ارسال', message:$w('wf_message')?.value||'',
     lastBy:$w('wf_last_by')?.value||'ثبت‌کننده فرم', lastAt:new Date().toISOString(), caseId:onlineCaseId, accessCode:onlineAccessCode
