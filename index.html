@@ -1782,7 +1782,9 @@ function getMedicalSections(){
 function getMedicalElements(){
   const sections = getMedicalSections();
   const els = [];
-  sections.forEach(sec => sec.querySelectorAll('input[id^="f_"], textarea[id^="f_"], select[id^="f_"]').forEach(el => els.push(el)));
+  // تمام کنترل‌های داخل محدوده پرونده پزشکی را بگیر؛ نه فقط عناصری که id آن‌ها با f_ شروع می‌شود.
+  // این نکته برای radioهای «مشخصات پرونده» و «سابقه شخصی، خانوادگی و پزشکی» ضروری است.
+  sections.forEach(sec=> sec.querySelectorAll('input, textarea, select').forEach(el => els.push(el)));
   return els;
 }
 
@@ -1790,14 +1792,17 @@ function serializeMedicalForm(){
   const data = {};
   const elements = getMedicalElements();
 
-  // تمام کنترل‌های واقعی فرم پزشکی، از جمله ورودی‌های داخل جداول ثابت، ذخیره می‌شوند.
+  // تمام کنترل‌های واقعی پرونده پزشکی ذخیره می‌شوند.
   elements.forEach(el=>{
+    if(el.type === 'file' || el.type === 'radio') return;
     const key = el.id || (el.name ? 'name_'+el.name : '');
     if(!key) return;
     if(el.type === 'checkbox') data[key] = !!el.checked;
-    else if(el.type !== 'radio' && el.type !== 'file') data[key] = el.value ?? '';
+    else data[key] = el.value ?? '';
   });
 
+  // تمام گروه‌های radio، حتی radioهایی که id ندارند، ذخیره می‌شوند.
+  // این شامل نوع معاینات در «مشخصات پرونده» و پاسخ‌های بلی/خیر بخش ۴ است.
   const names = new Set();
   elements.forEach(el=>{ if(el.type === 'radio' && el.name) names.add(el.name); });
   names.forEach(name=>{
@@ -1812,14 +1817,14 @@ function applyMedicalForm(data){
   const d = data || {};
   const elements = getMedicalElements();
 
-  // ابتدا همه کنترل‌های پزشکی پاک می‌شوند تا اطلاعات فرد قبلی
-  // حتی در جدول‌های ثابت نیز روی فرد جدید باقی نماند.
+  // ابتدا همه کنترل‌های پزشکی پاک می‌شوند تا هیچ داده‌ای از فرد قبلی،
+  // مخصوصاً در جداول و radioهای ثابت، روی فرد جدید باقی نماند.
   elements.forEach(el=>{
     if(el.type === 'radio' || el.type === 'checkbox') el.checked = false;
     else if(el.type !== 'file') el.value = '';
   });
 
-  // سپس تمام مقادیر ذخیره‌شده همان پرونده، تک‌به‌تک برگردانده می‌شوند.
+  // سپس دقیقاً داده‌های ذخیره‌شده همان پرونده برگردانده می‌شوند.
   elements.forEach(el=>{
     if(el.type === 'radio'){
       el.checked = d['radio_'+el.name] === el.value;
