@@ -1788,37 +1788,89 @@ function getMedicalElements(){
 
 function serializeMedicalForm(){
   const data = {};
-  getMedicalElements().forEach(el=>{
-    if(el.type === 'checkbox') data[el.id] = el.checked;
-    else if(el.type !== 'radio') data[el.id] = el.value;
+  const elements = getMedicalElements();
+
+  // تمام کنترل‌های واقعی فرم پزشکی، از جمله ورودی‌های داخل جداول ثابت، ذخیره می‌شوند.
+  elements.forEach(el=>{
+    const key = el.id || (el.name ? 'name_'+el.name : '');
+    if(!key) return;
+    if(el.type === 'checkbox') data[key] = !!el.checked;
+    else if(el.type !== 'radio' && el.type !== 'file') data[key] = el.value ?? '';
   });
+
   const names = new Set();
-  getMedicalElements().forEach(el=>{ if(el.type === 'radio' && el.name) names.add(el.name); });
+  elements.forEach(el=>{ if(el.type === 'radio' && el.name) names.add(el.name); });
   names.forEach(name=>{
-    const checked = getMedicalElements().find(el=>el.type==='radio' && el.name===name && el.checked);
+    const checked = elements.find(el=>el.type === 'radio' && el.name === name && el.checked);
     data['radio_'+name] = checked ? checked.value : '';
   });
+
   return data;
 }
 
 function applyMedicalForm(data){
   const d = data || {};
-  getMedicalElements().forEach(el=>{
+  const elements = getMedicalElements();
+
+  // ابتدا همه کنترل‌های پزشکی پاک می‌شوند تا اطلاعات فرد قبلی
+  // حتی در جدول‌های ثابت نیز روی فرد جدید باقی نماند.
+  elements.forEach(el=>{
+    if(el.type === 'radio' || el.type === 'checkbox') el.checked = false;
+    else if(el.type !== 'file') el.value = '';
+  });
+
+  // سپس تمام مقادیر ذخیره‌شده همان پرونده، تک‌به‌تک برگردانده می‌شوند.
+  elements.forEach(el=>{
     if(el.type === 'radio'){
       el.checked = d['radio_'+el.name] === el.value;
-    }else if(el.id in d){
-      if(el.type === 'checkbox') el.checked = !!d[el.id];
-      else el.value = d[el.id] ?? '';
-    }else{
-      if(el.type === 'checkbox') el.checked = false;
-      else el.value = '';
+      return;
     }
+    if(el.type === 'file') return;
+    const key = el.id || (el.name ? 'name_'+el.name : '');
+    if(!key || !(key in d)) return;
+    if(el.type === 'checkbox') el.checked = !!d[key];
+    else el.value = d[key] ?? '';
   });
+
   updateSignaturePreview();
   if(window.updateMedicalPreviews) window.updateMedicalPreviews();
 }
 
-function clearMedicalForm(){ applyMedicalForm({}); }
+function clearMedicalForm(){
+  // ایجاد «پرونده پزشکی جدید» باید تمام اجزای پرونده پزشکی، از جمله
+  // بخش «۰ ـ مشخصات پرونده»، را واقعاً به یک فرم کاملاً جدید تبدیل کند.
+  // این پاک‌سازی فقط محدوده پرونده پزشکی را هدف می‌گیرد و به اطلاعات کارگاه/بازدید دست نمی‌زند.
+  applyMedicalForm({});
+
+  // ورودی‌های فایل در serializeMedicalForm عمداً ذخیره نمی‌شوند؛ بنابراین
+  // هنگام ایجاد رکورد جدید باید خود input فایل نیز صریحاً خالی شود.
+  getMedicalSections().forEach(sec=>{
+    sec.querySelectorAll('input[type="file"]').forEach(input=>{
+      try { input.value = ''; } catch(e) {}
+    });
+  });
+
+  // پیش‌نمایش عکس و امضاهای پرونده قبلی نباید روی پرونده جدید باقی بماند.
+  ['photoPreview','examSigPreview','finalSigPreview'].forEach(id=>{
+    const img = document.getElementById(id);
+    if(img){ img.removeAttribute('src'); img.style.display = 'none'; }
+  });
+  ['photoPlaceholder','examSigPlaceholder','finalSigPlaceholder'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = 'block';
+  });
+
+  // اطمینان از اینکه فیلدهای مشخصات پرونده نیز کاملاً جدید هستند.
+  getMedicalSections().forEach(sec=>{
+    sec.querySelectorAll('input, select, textarea').forEach(el=>{
+      if(el.type === 'file') return;
+      if(el.type === 'radio' || el.type === 'checkbox') el.checked = false;
+      else el.value = '';
+    });
+  });
+
+  markUnsaved();
+}
 
 function getMedicalWorkerName(record){
   const d = record?.data || {};
@@ -1866,6 +1918,7 @@ function createMedicalRecord(){
   };
   medicalRecordsState.push(record);
   currentMedicalRecordId = id;
+  // رکورد جدید باید از «مشخصات پرونده» تا انتهای پرونده پزشکی کاملاً خالی باشد.
   clearMedicalForm();
   renderMedicalRecordPicker();
   markUnsaved();
@@ -1919,8 +1972,6 @@ async function saveMedicalRecord(){
       // رکورد اصلی کارگاه یک‌بار ایجاد می‌شود؛ از این پس ذخیره پزشکی مستقل خواهد بود.
       const data = serializeForm();
       const workshopName = document.getElementById('f_workshop_name')?.value.trim() || 'بدون‌نام';
-      const workerName = document.getElementById('f_fullname')?.value.trim();
-      const caseNo = document.getElementById('f_case_no')?.value.trim();
       const label = workshopName;
       currentId = 'inspection:' + Date.now();
       payload = { meta:{label, savedAt:new Date().toISOString()}, data, medicalRecords:getMedicalRecordsForSave() };
@@ -2201,8 +2252,6 @@ async function refreshList(){
 document.getElementById('btnSave').addEventListener('click', async ()=>{
   const data = serializeForm();
   const workshopName = document.getElementById('f_workshop_name')?.value.trim() || 'بدون‌نام';
-  const workerName = document.getElementById('f_fullname')?.value.trim();
-  const caseNo = document.getElementById('f_case_no')?.value.trim();
   const label = workshopName;
   const id = currentId || ('inspection:' + Date.now());
   const payload = { meta:{label, savedAt:new Date().toISOString()}, data, medicalRecords:getMedicalRecordsForSave() };
