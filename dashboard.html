@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>صفحه اصلی پرونده الکترونیک بهداشت محیط و حرفه‌ای</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap');
+*{box-sizing:border-box}body{margin:0;background:#f5f7fb;font-family:Vazirmatn,Tahoma,sans-serif;color:#16302c}
+.top{background:#fff;border-bottom:1px solid #e5e7eb;padding:13px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
+.actions{display:flex;gap:8px}.btn{border:0;border-radius:9px;padding:9px 14px;font-family:inherit;cursor:pointer}.primary{background:#2563eb;color:#fff}.light{background:#eef2f7;color:#16302c}
+.wrap{max-width:1000px;margin:28px auto;padding:0 16px}.welcome{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:24px;margin-bottom:18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
+.card{background:#fff;border:1px solid #e2e8f0;border-radius:18px;padding:22px;box-shadow:0 8px 24px -18px #0004}
+.card h3{margin:0 0 7px}.card p{font-size:13px;color:#667085;line-height:1.8}.card button{width:100%;padding:12px;border:0;border-radius:10px;background:#0e5952;color:#fff;font-family:inherit;font-weight:700;cursor:pointer}
+</style>
+<style>
+.environmental-card{position:relative;overflow:hidden;background:rgba(255,255,255,.94)}
+.environmental-card:before{content:"";position:absolute;inset:-18px;background:url("banner_behdasht_mohit.png") center center/cover no-repeat;filter:blur(9px);transform:scale(1.06);opacity:.42;z-index:0}
+.environmental-card:after{content:"";position:absolute;inset:0;background:rgba(255,255,255,.70);z-index:1}
+.environmental-card>*{position:relative;z-index:2}.form-title{font-size:20px;font-weight:800;margin-bottom:10px}
+.occupational-card{position:relative;overflow:hidden;background:rgba(255,255,255,.94)}
+.occupational-card:before{content:"";position:absolute;inset:-18px;background:url("banner_herfei_story.jpg") center center/cover no-repeat;filter:blur(9px);transform:scale(1.06);opacity:.42;z-index:0}
+.occupational-card:after{content:"";position:absolute;inset:0;background:rgba(255,255,255,.70);z-index:1}
+.occupational-card>*{position:relative;z-index:2}
+</style></head>
+<body>
+<header class="top">
+  <strong>پرونده الکترونیک بهداشت محیط و حرفه‌ای</strong>
+  <div class="actions">
+    <span id="user" style="font-size:12px;color:#667085;align-self:center"></span>
+    <button class="btn light" onclick="logout()">خروج</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="welcome">
+    <h2 style="margin:0 0 5px">صفحه اصلی سامانه</h2>
+    <div style="color:#667085;font-size:13px">از اینجا می‌توانید وارد فرم‌های سامانه شوید.</div>
+  </section>
+  <section class="grid">
+    <div class="card occupational-card">
+      <h3>فرم بازرسی بهداشت حرفه‌ای</h3>
+      <p>ورود به فرم بازرسی بهداشت حرفه‌ای از کارگاه و تکمیل اطلاعات.</p>
+      <button onclick="location.href='./forms.html'">ورود به فرم بازرسی بهداشت حرفه‌ای</button>
+    </div>
+  </section>
+</main>
+<script>
+const token=sessionStorage.getItem('hh_access_token');
+if(!token){location.href='login.html'}
+else {
+  fetch('https://vjzxmnqwqztjjwpwlsjo.supabase.co/auth/v1/user',{headers:{'apikey':'sb_publishable_ADC2yOmAgXglc3sT6ZoTXQ_jjmeHGjk','Authorization':'Bearer '+token}})
+    .then(r=>{if(!r.ok) throw new Error('expired')})
+    .catch(()=>logout());
+}
+document.getElementById('user').textContent='کد ملی: '+(sessionStorage.getItem('hh_national_code')||'');
+function logout(){
+  sessionStorage.removeItem('hh_portal_auth');
+  sessionStorage.removeItem('hh_national_code');
+  sessionStorage.removeItem('hh_access_token');
+  sessionStorage.removeItem('hh_refresh_token');
+  location.href='login.html';
+}
+</script>
+</body>
+</html>
