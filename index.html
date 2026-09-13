@@ -242,7 +242,7 @@ createUserBtn?.addEventListener('click', async () => {
   } catch (e) {
     const msg = e && e.message ? e.message : 'خطای نامشخص';
     if (msg === 'Failed to fetch') {
-      userStatus.textContent = 'ارتباط با سرویس ایجاد کاربر برقرار نشد. لطفاً مطمئن شوید create-user در همین پروژه Deploy شده و آدرس Function فعال است.';
+      userStatus.textContent = 'ارتباط با سرویس ایجاد کاربر برقرار نشد. اتصال اینترنت و آدرس create-user را بررسی کنید.';
     } else {
       userStatus.textContent = 'خطا: ' + msg;
     }
