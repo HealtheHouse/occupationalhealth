@@ -21,7 +21,7 @@ h2{margin:0 0 8px;font-size:28px}.sub{color:var(--muted);line-height:1.9;margin-
 .topbar{height:88px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 32px;gap:24px}.brand{display:flex;align-items:center;gap:12px;font-weight:bold}.brand-icon{width:46px;height:46px;border-radius:14px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:24px}
 .theme{margin-right:auto;display:flex;align-items:center;gap:8px}.swatch{width:22px;height:22px;border-radius:50%;border:2px solid white;box-shadow:0 0 0 1px #bbb}.user{display:flex;align-items:center;gap:12px}.avatar{width:48px;height:48px;border-radius:50%;background:#e3eee9;color:var(--accent);display:grid;place-items:center;font-weight:bold}.meta{text-align:right}.meta strong{display:block}.meta small{color:var(--muted)}
 .main{max-width:1400px;margin:auto;padding:30px}.welcome{display:flex;justify-content:space-between;align-items:end;margin-bottom:25px}.welcome h1{margin:0 0 7px;font-size:30px}.welcome p{margin:0;color:var(--muted)}
-.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}.card{background:#fff;border:1px solid var(--border);border-radius:22px;padding:24px;box-shadow:0 12px 35px #14372b10}.head{display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--border);padding-bottom:15px;margin-bottom:15px}.icon{width:54px;height:54px;border-radius:17px;background:#e8f5ef;display:grid;place-items:center;font-size:27px}.card h3{margin:0;font-size:20px;line-height:1.8}.item{width:100%;border:1px solid var(--border);background:#f9fcfb;border-radius:13px;padding:14px;margin:10px 0;display:flex;align-items:center;justify-content:space-between;text-align:right;color:var(--text)}.item:hover{border-color:var(--accent);background:#f0f8f4}.arrow{color:var(--accent);font-size:20px}.footer{text-align:center;color:var(--muted);font-size:12px;padding:35px}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.card{position:relative;overflow:hidden;background:linear-gradient(145deg,#fff 0%,#fbfffd 100%);border:1px solid var(--border);border-radius:24px;padding:24px;box-shadow:0 14px 38px #14372b12;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}.card:before{content:"";position:absolute;top:0;right:0;left:0;height:5px;background:linear-gradient(90deg,#55b890,#72c9ad,#f0b35b,#ef7c9a);opacity:.9}.card:hover{transform:translateY(-4px);box-shadow:0 20px 45px #14372b1b;border-color:#b9d9cb}.head{display:flex;align-items:center;gap:14px;border-bottom:1px dashed #d7e8e0;padding:7px 0 16px;margin-bottom:15px}.icon{width:58px;height:58px;flex:0 0 58px;border-radius:18px;background:linear-gradient(135deg,#e8f7f0,#fff4df);display:grid;place-items:center;font-size:29px;box-shadow:0 7px 18px #14372b10}.card h3{margin:0;font-size:20px;line-height:1.8;font-weight:800}.item{position:relative;width:100%;border:1px solid #dceae4;background:linear-gradient(90deg,#fbfefd,#f5fbf8);border-radius:15px;padding:14px 16px;margin:10px 0;display:flex;align-items:center;justify-content:space-between;text-align:right;color:var(--text);font-weight:700;cursor:pointer;transition:transform .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease}.item:before{content:"";width:7px;height:7px;border-radius:50%;background:#63b995;margin-left:10px;flex:0 0 7px;box-shadow:0 0 0 5px #63b99518}.item:hover{transform:translateX(-4px);border-color:#8bc8ad;background:linear-gradient(90deg,#eefaf4,#fff8eb);box-shadow:0 8px 18px #14372b10}.arrow{color:#45a77e;font-size:24px;font-weight:900;transition:transform .18s ease}.item:hover .arrow{transform:translateX(-4px)}.card-1 .icon{background:linear-gradient(135deg,#e7f6ef,#e8f1ff)}.card-2 .icon{background:linear-gradient(135deg,#fff1df,#fff8e9)}.card-3 .icon{background:linear-gradient(135deg,#eaf0ff,#f2eaff)}.card-4 .icon{background:linear-gradient(135deg,#fff0f4,#f3efff)}.card-1 .item:before{background:#45a77e;box-shadow:0 0 0 5px #45a77e18}.card-2 .item:before{background:#e5a044;box-shadow:0 0 0 5px #e5a04418}.card-3 .item:before{background:#7b75d8;box-shadow:0 0 0 5px #7b75d818}.card-4 .item:before{background:#dc7091;box-shadow:0 0 0 5px #dc709118}.footer{text-align:center;color:var(--muted);font-size:12px;padding:35px}
 @media(max-width:900px){.login-card{grid-template-columns:1fr}.hero{min-height:360px}.login-panel{padding:35px 28px}.cards{grid-template-columns:1fr}.topbar{padding:0 15px}.brand span{display:none}.theme{display:none}}
 </style>
 
@@ -74,20 +74,20 @@ h2{margin:0 0 8px;font-size:28px}.sub{color:var(--muted);line-height:1.9;margin-
 <main class="main">
 <div class="welcome"><div><h1>خانه</h1><p>خوش آمدید؛ لطفاً یکی از بخش‌های زیر را انتخاب کنید.</p></div><div style="display:flex;gap:8px;align-items:center"><button id="openUserManagement" class="admin-btn">مدیریت کاربران</button><button id="logout" class="item" style="width:auto">خروج</button></div></div>
 <div class="cards">
-<section class="card"><div class="head"><div class="icon">🏭</div><h3>۱. تکمیل اطلاعات کارگاه‌های بهداشت حرفه‌ای</h3></div>
-<button class="item" data-link="کارگاه تک واحدی">الف. کارگاه تک واحدی <span class="arrow">‹</span></button>
-<button class="item" data-link="کارگاه چند واحدی">ب. کارگاه چند واحدی <span class="arrow">‹</span></button>
-<button class="item" data-link="کارگاه‌های کشاورزی">ج. کارگاه‌های کشاورزی <span class="arrow">‹</span></button></section>
-<section class="card"><div class="head"><div class="icon">🍴</div><h3>۲. تکمیل اطلاعات بهداشتی مراکز تهیه و توزیع مواد غذایی و اماکن عمومی</h3></div>
-<button class="item" data-link="اماکن تهیه و توزیع مواد غذایی">الف. اماکن تهیه و توزیع مواد غذایی <span class="arrow">‹</span></button>
-<button class="item" data-link="اماکن عمومی مشمول">ب. اماکن عمومی مشمول <span class="arrow">‹</span></button>
-<button class="item" data-link="اماکن عمومی غیر مشمول">ج. اماکن عمومی غیر مشمول <span class="arrow">‹</span></button></section>
-<section class="card"><div class="head"><div class="icon">📊</div><h3>۳. شاخص‌ها</h3></div>
-<button class="item" data-link="شاخص بهداشت حرفه‌ای">الف. شاخص بهداشت حرفه‌ای <span class="arrow">‹</span></button>
-<button class="item" data-link="شاخص بهداشت محیط">ب. شاخص بهداشت محیط <span class="arrow">‹</span></button></section>
-<section class="card"><div class="head"><div class="icon">📖</div><h3>۴. راهنمای سامانه</h3></div>
-<button class="item" data-link="راهنمای بهداشت حرفه‌ای">الف. بهداشت حرفه‌ای <span class="arrow">‹</span></button>
-<button class="item" data-link="راهنمای بهداشت محیط">ب. بهداشت محیط <span class="arrow">‹</span></button></section>
+<section class="card card-1"><div class="head"><div class="icon">🏭</div><h3>۱. 🌱 تکمیل اطلاعات کارگاه‌های بهداشت حرفه‌ای</h3></div>
+<button class="item" data-link="کارگاه تک واحدی">الف. 🏭 کارگاه تک واحدی <span class="arrow">‹</span></button>
+<button class="item" data-link="کارگاه چند واحدی">ب. 🏢 کارگاه چند واحدی <span class="arrow">‹</span></button>
+<button class="item" data-link="کارگاه‌های کشاورزی">ج. 🌾 کارگاه‌های کشاورزی <span class="arrow">‹</span></button></section>
+<section class="card card-2"><div class="head"><div class="icon">🍴</div><h3>۲. 🥗 تکمیل اطلاعات بهداشتی مراکز تهیه و توزیع مواد غذایی و اماکن عمومی</h3></div>
+<button class="item" data-link="اماکن تهیه و توزیع مواد غذایی">الف. 🍽️ اماکن تهیه و توزیع مواد غذایی <span class="arrow">‹</span></button>
+<button class="item" data-link="اماکن عمومی مشمول">ب. 🏙️ اماکن عمومی مشمول <span class="arrow">‹</span></button>
+<button class="item" data-link="اماکن عمومی غیر مشمول">ج. 🏘️ اماکن عمومی غیر مشمول <span class="arrow">‹</span></button></section>
+<section class="card card-3"><div class="head"><div class="icon">📊</div><h3>۳. ✨ شاخص‌ها و آمارهای سلامت</h3></div>
+<button class="item" data-link="شاخص بهداشت حرفه‌ای">الف. 🦺 شاخص بهداشت حرفه‌ای <span class="arrow">‹</span></button>
+<button class="item" data-link="شاخص بهداشت محیط">ب. 🌿 شاخص بهداشت محیط <span class="arrow">‹</span></button></section>
+<section class="card card-4"><div class="head"><div class="icon">📖</div><h3>۴. 💡 راهنمای سامانه</h3></div>
+<button class="item" data-link="راهنمای بهداشت حرفه‌ای">الف. 🦺 راهنمای بهداشت حرفه‌ای <span class="arrow">‹</span></button>
+<button class="item" data-link="راهنمای بهداشت محیط">ب. 🌿 راهنمای بهداشت محیط <span class="arrow">‹</span></button></section>
 </div>
 <div class="footer">© سامانه بهداشت حرفه‌ای و محیط - تمامی حقوق محفوظ است.</div>
 </main>
