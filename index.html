@@ -308,7 +308,27 @@ document.getElementById('logout').onclick=()=>{sessionStorage.removeItem('samane
 document.querySelectorAll('.swatch').forEach(b=>b.onclick=()=>document.documentElement.style.setProperty('--accent',b.dataset.c));
 document.querySelectorAll('[data-link]').forEach(b=>b.onclick=()=>{ if(b.dataset.link==='کارگاه تک واحدی'){ window.location.href='forms_workshop_searchbox_click_select.html'; return; } alert('لینک فرم «'+b.dataset.link+'» در مرحله بعد قابل اتصال است.'); });
 
+const returnToHome=sessionStorage.getItem('samanehReturnToHome')==='1';
+if(returnToHome){
+  sessionStorage.removeItem('samanehReturnToHome');
+  const savedReturn=sessionStorage.getItem('samanehAuth');
+  if(savedReturn){
+    try{
+      const s=JSON.parse(savedReturn);
+      if(s.username && s.access_token && s.expires_at>Date.now()){
+        document.getElementById('shownUser').textContent=s.username;
+        document.getElementById('avatar').textContent=s.username.charAt(0);
+        document.getElementById('login').classList.add('hidden');
+        document.getElementById('app').classList.remove('hidden');
+      }
+    }catch(e){}
+  }
+}else{
 const saved=sessionStorage.getItem('samanehAuth');
+if(saved){
+  try{const s=JSON.parse(saved); if(s.username && s.access_token && s.expires_at>Date.now()){showApp(s.username)} else sessionStorage.removeItem('samanehAuth')}catch(e){sessionStorage.removeItem('samanehAuth')}
+}
+}
 if(saved){
   try{const s=JSON.parse(saved); if(s.username && s.access_token && s.expires_at>Date.now()){showApp(s.username)} else sessionStorage.removeItem('samanehAuth')}catch(e){sessionStorage.removeItem('samanehAuth')}
 }
