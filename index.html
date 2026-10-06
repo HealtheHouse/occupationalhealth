@@ -308,7 +308,7 @@ document.getElementById('logout').onclick=()=>{sessionStorage.removeItem('samane
 document.querySelectorAll('.swatch').forEach(b=>b.onclick=()=>document.documentElement.style.setProperty('--accent',b.dataset.c));
 document.querySelectorAll('[data-link]').forEach(b=>b.onclick=()=>{ if(b.dataset.link==='کارگاه تک واحدی'){ window.location.href='forms_workshop_searchbox_click_select.html'; return; } alert('لینک فرم «'+b.dataset.link+'» در مرحله بعد قابل اتصال است.'); });
 
-const returnToMain=sessionStorage.getItem('samanehReturnToMain')==='1';
+const returnToMain=new URLSearchParams(window.location.search).get('returnToMain')==='1' || sessionStorage.getItem('samanehReturnToMain')==='1';
 if(returnToMain){
   sessionStorage.removeItem('samanehReturnToMain');
   sessionStorage.removeItem('samanehAuth');
